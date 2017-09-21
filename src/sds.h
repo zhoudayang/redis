@@ -47,16 +47,17 @@ typedef char *sds;
 /*
  * 保存字符串对象的结构
  */
-struct sdshdr {
-    
-    // buf 中已占用空间的长度
-    int len;
+struct sdshdr
+{
 
-    // buf 中剩余可用空间的长度
-    int free;
+  // buf 中已占用空间的长度
+  int len;
 
-    // 数据空间
-    char buf[];
+  // buf 中剩余可用空间的长度
+  int free;
+
+  // 数据空间
+  char buf[];
 };
 
 /*
@@ -64,9 +65,11 @@ struct sdshdr {
  *
  * T = O(1)
  */
-static inline size_t sdslen(const sds s) {
-    struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
-    return sh->len;
+static inline size_t sdslen(const sds s)
+{
+  struct sdshdr *sh = (void *) (s - (sizeof(struct sdshdr)));
+  /// 实际保存的字符串的长度
+  return sh->len;
 }
 
 /*
@@ -74,9 +77,11 @@ static inline size_t sdslen(const sds s) {
  *
  * T = O(1)
  */
-static inline size_t sdsavail(const sds s) {
-    struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
-    return sh->free;
+static inline size_t sdsavail(const sds s)
+{
+  struct sdshdr *sh = (void *) (s - (sizeof(struct sdshdr)));
+  /// 可用空间的大小
+  return sh->free;
 }
 
 sds sdsnewlen(const void *init, size_t initlen);
@@ -96,7 +101,7 @@ sds sdscpy(sds s, const char *t);
 sds sdscatvprintf(sds s, const char *fmt, va_list ap);
 #ifdef __GNUC__
 sds sdscatprintf(sds s, const char *fmt, ...)
-    __attribute__((format(printf, 2, 3)));
+__attribute__((format(printf, 2, 3)));
 #else
 sds sdscatprintf(sds s, const char *fmt, ...);
 #endif
