@@ -1489,7 +1489,7 @@ static int _dictKeyIndex(dict *d, const void *key)
         }
 
         // 如果运行到这里时，说明 0 号哈希表中所有节点都不包含 key
-        // 如果这时 rehahs 正在进行，那么继续对 1 号哈希表进行 rehash
+        // 如果这时 rehash 正在进行，那么继续对 1 号哈希表进行 rehash
         if (!dictIsRehashing(d)) break;
     }
 
