@@ -329,6 +329,7 @@ static intset *intsetUpgradeAndAdd(intset *is, int64_t value)
   // T = O(N)
   is = intsetResize(is, intrev32ifbe(is->length) + 1);
 
+  /// 在最前端插入还是在最后端插入
   /* Upgrade back-to-front so we don't overwrite values.
    * Note that the "prepend" variable is used to make sure we have an empty
    * space at either the beginning or the end of the intset. */
@@ -521,6 +522,7 @@ intset *intsetAdd(intset *is, int64_t value, uint8_t *success)
     // T = O(N)
     if (pos < intrev32ifbe(is->length))
     {
+      /// pos之后的元素往后移动一位
       intsetMoveTail(is, pos, pos + 1);
     }
   }
@@ -607,6 +609,7 @@ intset *intsetRemove(intset *is, int64_t value, int *success)
     // | a | c | d |
     if (pos < (len - 1))
     {
+      /// 往前移动一位
       intsetMoveTail(is, pos + 1, pos);
     }
     // 缩小数组的大小，移除被删除元素占用的空间
