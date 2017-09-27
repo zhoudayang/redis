@@ -716,7 +716,9 @@ static int dictGenericDelete(dict *d, const void *key, int nofree)
 
   // 进行单步 rehash ，T = O(1)
   if (dictIsRehashing(d))
+  {
     _dictRehashStep(d);
+  }
 
   // 计算哈希值
   h = dictHashKey(d, key);
@@ -743,9 +745,13 @@ static int dictGenericDelete(dict *d, const void *key, int nofree)
         /* Unlink the element from the list */
         // 从链表中删除
         if (prevHe)
+        {
           prevHe->next = he->next;
+        }
         else
+        {
           d->ht[table].table[idx] = he->next;
+        }
 
         // 释放调用键和值的释放函数？
         if (!nofree)
@@ -771,7 +777,9 @@ static int dictGenericDelete(dict *d, const void *key, int nofree)
     // 如果执行到这里，说明在 0 号哈希表中找不到给定键
     // 那么根据字典是否正在进行 rehash ，决定要不要查找 1 号哈希表
     if (!dictIsRehashing(d))
+    {
       break;
+    }
   }
 
   // 没找到
@@ -898,7 +906,9 @@ dictEntry *dictFind(dict *d, const void *key)
 
   // 如果条件允许的话，进行单步 rehash
   if (dictIsRehashing(d))
+  {
     _dictRehashStep(d);
+  }
 
   // 计算键的哈希值
   h = dictHashKey(d, key);
@@ -917,7 +927,9 @@ dictEntry *dictFind(dict *d, const void *key)
     {
 
       if (dictCompareKeys(d, key, he->key))
+      {
         return he;
+      }
 
       he = he->next;
     }
@@ -926,7 +938,9 @@ dictEntry *dictFind(dict *d, const void *key)
     // 那么程序会检查字典是否在进行 rehash ，
     // 然后才决定是直接返回 NULL ，还是继续查找 1 号哈希表
     if (!dictIsRehashing(d))
+    {
       return NULL;
+    }
   }
 
   // 进行到这里时，说明两个哈希表都没找到
@@ -1650,11 +1664,12 @@ static int _dictKeyIndex(dict *d, const void *key)
     }
 
     // 如果运行到这里时，说明 0 号哈希表中所有节点都不包含 key
-    // 如果这时 rehahs 正在进行，那么继续对 1 号哈希表进行 rehash
+    // 如果这时 rehash 正在进行，那么继续对 1 号哈希表进行 rehash
     if (!dictIsRehashing(d))
     {
       break;
     }
+
   }
 
   // 返回索引值

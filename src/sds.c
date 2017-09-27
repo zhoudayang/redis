@@ -1420,7 +1420,7 @@ sds *sdssplitargs(const char *line, int *argc)
     if (*p)
     {
       /* get a token */
-      int inq = 0;  /* set to 1 if we are in "quotes" */
+      int inq = 0;  /* set to 1 if we are in "quotes" 双引号 */
       int insq = 0; /* set to 1 if we are in 'single quotes' */
       int done = 0;
 
