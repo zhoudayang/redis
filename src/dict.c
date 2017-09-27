@@ -1454,6 +1454,7 @@ unsigned long dictScan(dict *d,
 
     /* Emit entries at cursor */
     // 指向哈希桶
+    // hash值从v开始
     de = t0->table[v & m0];
     // 遍历桶中的所有节点
     while (de)

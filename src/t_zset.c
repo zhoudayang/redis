@@ -115,9 +115,11 @@ zskiplist *zslCreate(void) {
     // T = O(1)
     zsl->header = zslCreateNode(ZSKIPLIST_MAXLEVEL,0,NULL);
     for (j = 0; j < ZSKIPLIST_MAXLEVEL; j++) {
+        /// 设置forward结点为NULL
         zsl->header->level[j].forward = NULL;
         zsl->header->level[j].span = 0;
     }
+    /// 设置backward结点为NULL
     zsl->header->backward = NULL;
 
     // 设置表尾
