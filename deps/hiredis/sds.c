@@ -52,6 +52,7 @@ sds sdsnewlen(const void *init, size_t initlen)
 {
   struct sdshdr *sh;
 
+  // 是否是初始化
   if (init)
   {
     sh = zmalloc(sizeof(struct sdshdr) + initlen + 1);

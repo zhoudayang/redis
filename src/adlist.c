@@ -603,7 +603,6 @@ listNode *listIndex(list *list, long index)
       n = n->next;
     }
   }
-
   return n;
 }
 

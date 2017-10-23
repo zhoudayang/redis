@@ -106,7 +106,7 @@ zskiplist *zslCreate(void)
   int j;
   zskiplist *zsl;
 
-  // 分配空间
+  // 分配空间, 创建skiplist结构体
   zsl = zmalloc(sizeof(*zsl));
 
   // 设置高度和起始层数
@@ -118,9 +118,11 @@ zskiplist *zslCreate(void)
   zsl->header = zslCreateNode(ZSKIPLIST_MAXLEVEL, 0, NULL);
   for (j = 0; j < ZSKIPLIST_MAXLEVEL; j++)
   {
+    /// forward结点指向NULL
     zsl->header->level[j].forward = NULL;
     zsl->header->level[j].span = 0;
   }
+  /// header->backward = NULL
   zsl->header->backward = NULL;
 
   // 设置表尾
@@ -160,6 +162,7 @@ void zslFree(zskiplist *zsl)
   while (node)
   {
 
+    /// 注意要记录下一个结点
     next = node->level[0].forward;
 
     zslFreeNode(node);
@@ -194,6 +197,7 @@ int zslRandomLevel(void)
     level += 1;
   }
 
+  /// 控制返回的level值小于ZSKIPLIST_MAXLEVEL
   return (level < ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
 }
 
@@ -207,15 +211,18 @@ int zslRandomLevel(void)
  */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
 {
+  /// 记录每一层直接指向要插入的节点的节点
   zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
   unsigned int rank[ZSKIPLIST_MAXLEVEL];
   int i, level;
 
+  /// 断言输入的score值不为nan
   redisAssert(!isnan(score));
 
   // 在各个层查找节点的插入位置
   // T_wrost = O(N^2), T_avg = O(N log N)
   x = zsl->header;
+  /// 从最高的level开始处理
   for (i = zsl->level - 1; i >= 0; i--)
   {
 
@@ -225,7 +232,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
     // 各个层的 rank 值一层层累积
     // 最终 rank[0] 的值加一就是新节点的前置节点的排位
     // rank[0] 会在后面成为计算 span 值和 rank 值的基础
-    //
+    /// 如果是最后一个level，那么rank[i] = 0, 否则rank[i] 初始化为 rank[i+1]
     rank[i] = i == (zsl->level - 1) ? 0 : rank[i + 1];
 
     // 沿着前进指针遍历跳跃表
@@ -257,6 +264,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
      */
 
   // 获取一个随机值作为新节点的层数
+  /// 这一个level是新加入的节点的最大层数
   // T = O(N)
   level = zslRandomLevel();
 
@@ -286,6 +294,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
   // T = O(1)
   for (i = 0; i < level; i++)
   {
+    /// 将新加入的节点插入到正确的位置上
     // 设置新节点的 forward 指针
     x->level[i].forward = update[i]->level[i].forward;
 
@@ -294,7 +303,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
 
     /* update span covered by update[i] as x is inserted here */
     // 计算新节点跨越的节点数量
-    ///!!! 在level[i].span之间插入了新节点x
+    // x->level[i].span要减小, 其中一部分span划分给x -> span
     x->level[i].span = update[i]->level[i].span - (rank[0] - rank[i]);
 
     // 更新新节点插入之后，沿途节点的 span 值
@@ -312,6 +321,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
 
   // 设置新节点的后退指针
   x->backward = (update[0] == zsl->header) ? NULL : update[0];
+  /// 前一个节点的backward指针也指向x
   if (x->level[0].forward)
   {
     x->level[0].forward->backward = x;
@@ -331,7 +341,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj)
  *
  * 内部删除函数，
  * 被 zslDelete 、 zslDeleteRangeByScore 和 zslDeleteByRank 等函数调用。
- *
+ * 从skiplist之中删除结点
  * T = O(1)
  */
 void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update)
@@ -344,7 +354,7 @@ void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update)
   {
     if (update[i]->level[i].forward == x)
     {
-      /// 更新span值
+      /// 更新x前一个节点的span值
       update[i]->level[i].span += x->level[i].span - 1;
       // 指向x的下一个节点
       update[i]->level[i].forward = x->level[i].forward;

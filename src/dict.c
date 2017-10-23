@@ -1524,12 +1524,14 @@ unsigned long dictScan(dict *d,
       }
 
       /* Increment bits not covered by the smaller mask */
+      /// 高位m0位 ~ m1位加上1
       v = (((v | m0) + 1) & ~m0) | (v & m0);
 
       /* Continue while bits covered by mask difference is non-zero */
-    } while (v & (m0 ^ m1));
+    } while (v & (m0 ^ m1)); // 相差的bit各种组合的数目之和
   }
 
+  /// 加法，施加在高位上，向低位进位
   /* Set unmasked bits so incrementing the reversed cursor
    * operates on the masked bits of the smaller table */
   v |= ~m0;

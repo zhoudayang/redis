@@ -41,6 +41,7 @@
 
 /*
  * 类型别名，用于指向 sdshdr 的 buf 属性
+ * sds 指向的是sdshdr中的buf
  */
 typedef char *sds;
 
