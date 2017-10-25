@@ -28,6 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/// complete
 #ifndef __ZMALLOC_H
 #define __ZMALLOC_H
 

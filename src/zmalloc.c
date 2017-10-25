@@ -35,8 +35,9 @@
  * for instance to free results obtained by backtrace_symbols(). We need
  * to define this function before including zmalloc.h that may shadow the
  * free implementation if we use jemalloc or another non standard allocator. */
-void zlibc_free(void *ptr) {
-    free(ptr);
+void zlibc_free(void *ptr)
+{
+  free(ptr);
 }
 
 #include <string.h>
@@ -62,12 +63,13 @@ void zlibc_free(void *ptr) {
 #define free(ptr) tc_free(ptr)
 #elif defined(USE_JEMALLOC)
 #define malloc(size) je_malloc(size)
-#define calloc(count,size) je_calloc(count,size)
-#define realloc(ptr,size) je_realloc(ptr,size)
+#define calloc(count, size) je_calloc(count,size)
+#define realloc(ptr, size) je_realloc(ptr,size)
 #define free(ptr) je_free(ptr)
 #endif
 
 #ifdef HAVE_ATOMIC
+/// 使用原子变量来达成线程安全
 #define update_zmalloc_stat_add(__n) __sync_add_and_fetch(&used_memory, (__n))
 #define update_zmalloc_stat_sub(__n) __sync_sub_and_fetch(&used_memory, (__n))
 #else
@@ -85,6 +87,7 @@ void zlibc_free(void *ptr) {
 
 #endif
 
+/// 向上取余到sizeof(long)的倍数
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -109,69 +112,88 @@ static size_t used_memory = 0;
 static int zmalloc_thread_safe = 0;
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void zmalloc_default_oom(size_t size) {
-    fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
-        size);
-    fflush(stderr);
-    abort();
+static void zmalloc_default_oom(size_t size)
+{
+  fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
+          size);
+  // flush stderr
+  fflush(stderr);
+  /// abort退出
+  abort();
 }
 
+/// use defautl oom handler
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
-void *zmalloc(size_t size) {
-    void *ptr = malloc(size+PREFIX_SIZE);
+void *zmalloc(size_t size)
+{
+  void *ptr = malloc(size + PREFIX_SIZE);
 
-    if (!ptr) zmalloc_oom_handler(size);
+  if (!ptr)
+  {
+    zmalloc_oom_handler(size);
+  }
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
+  update_zmalloc_stat_alloc(zmalloc_size(ptr));
+  return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+  *((size_t*)ptr) = size;
+  update_zmalloc_stat_alloc(size+PREFIX_SIZE);
+  return (char*)ptr+PREFIX_SIZE;
 #endif
 }
 
-void *zcalloc(size_t size) {
-    void *ptr = calloc(1, size+PREFIX_SIZE);
+void *zcalloc(size_t size)
+{
+  void *ptr = calloc(1, size + PREFIX_SIZE);
 
-    if (!ptr) zmalloc_oom_handler(size);
+  if (!ptr)
+  {
+    zmalloc_oom_handler(size);
+  }
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
+  update_zmalloc_stat_alloc(zmalloc_size(ptr));
+  return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+  *((size_t*)ptr) = size;
+  update_zmalloc_stat_alloc(size+PREFIX_SIZE);
+  return (char*)ptr+PREFIX_SIZE;
 #endif
 }
 
-void *zrealloc(void *ptr, size_t size) {
+void *zrealloc(void *ptr, size_t size)
+{
 #ifndef HAVE_MALLOC_SIZE
-    void *realptr;
+  void *realptr;
 #endif
-    size_t oldsize;
-    void *newptr;
+  size_t oldsize;
+  void *newptr;
 
-    if (ptr == NULL) return zmalloc(size);
+  if (ptr == NULL)
+  {
+    return zmalloc(size);
+  }
 #ifdef HAVE_MALLOC_SIZE
-    oldsize = zmalloc_size(ptr);
-    newptr = realloc(ptr,size);
-    if (!newptr) zmalloc_oom_handler(size);
+  oldsize = zmalloc_size(ptr);
+  newptr = realloc(ptr, size);
+  if (!newptr)
+  {
+    zmalloc_oom_handler(size);
+  }
 
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(zmalloc_size(newptr));
-    return newptr;
+  update_zmalloc_stat_free(oldsize);
+  update_zmalloc_stat_alloc(zmalloc_size(newptr));
+  return newptr;
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    newptr = realloc(realptr,size+PREFIX_SIZE);
-    if (!newptr) zmalloc_oom_handler(size);
+  realptr = (char*)ptr-PREFIX_SIZE;
+  oldsize = *((size_t*)realptr);
+  newptr = realloc(realptr,size+PREFIX_SIZE);
+  if (!newptr) zmalloc_oom_handler(size);
 
-    *((size_t*)newptr) = size;
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(size);
-    return (char*)newptr+PREFIX_SIZE;
+  *((size_t*)newptr) = size;
+  update_zmalloc_stat_free(oldsize);
+  update_zmalloc_stat_alloc(size);
+  return (char*)newptr+PREFIX_SIZE;
 #endif
 }
 
@@ -189,57 +211,69 @@ size_t zmalloc_size(void *ptr) {
 }
 #endif
 
-void zfree(void *ptr) {
+void zfree(void *ptr)
+{
 #ifndef HAVE_MALLOC_SIZE
-    void *realptr;
-    size_t oldsize;
+  void *realptr;
+  size_t oldsize;
 #endif
 
-    if (ptr == NULL) return;
+  if (ptr == NULL)
+  {
+    return;
+  }
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_free(zmalloc_size(ptr));
-    free(ptr);
+  update_zmalloc_stat_free(zmalloc_size(ptr));
+  free(ptr);
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    update_zmalloc_stat_free(oldsize+PREFIX_SIZE);
-    free(realptr);
+  realptr = (char*)ptr-PREFIX_SIZE;
+  oldsize = *((size_t*)realptr);
+  update_zmalloc_stat_free(oldsize+PREFIX_SIZE);
+  free(realptr);
 #endif
 }
 
-char *zstrdup(const char *s) {
-    size_t l = strlen(s)+1;
-    char *p = zmalloc(l);
+char *zstrdup(const char *s)
+{
+  size_t l = strlen(s) + 1;
+  char *p = zmalloc(l);
 
-    memcpy(p,s,l);
-    return p;
+  memcpy(p, s, l);
+  return p;
 }
 
-size_t zmalloc_used_memory(void) {
-    size_t um;
+size_t zmalloc_used_memory(void)
+{
+  size_t um;
 
-    if (zmalloc_thread_safe) {
+  if (zmalloc_thread_safe)
+  {
 #ifdef HAVE_ATOMIC
-        um = __sync_add_and_fetch(&used_memory, 0);
+    um = __sync_add_and_fetch(&used_memory, 0);
 #else
-        pthread_mutex_lock(&used_memory_mutex);
-        um = used_memory;
-        pthread_mutex_unlock(&used_memory_mutex);
+    pthread_mutex_lock(&used_memory_mutex);
+    um = used_memory;
+    pthread_mutex_unlock(&used_memory_mutex);
 #endif
-    }
-    else {
-        um = used_memory;
-    }
+  }
+  else
+  {
+    um = used_memory;
+  }
 
-    return um;
+  return um;
 }
 
-void zmalloc_enable_thread_safeness(void) {
-    zmalloc_thread_safe = 1;
+/// 统计时线程安全
+void zmalloc_enable_thread_safeness(void)
+{
+  zmalloc_thread_safe = 1;
 }
 
-void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
-    zmalloc_oom_handler = oom_handler;
+/// 设置oom handler
+void zmalloc_set_oom_handler(void (*oom_handler)(size_t))
+{
+  zmalloc_oom_handler = oom_handler;
 }
 
 /* Get the RSS information in an OS-specific way.
@@ -298,16 +332,20 @@ size_t zmalloc_get_rss(void) {
 #include <mach/task.h>
 #include <mach/mach_init.h>
 
-size_t zmalloc_get_rss(void) {
-    task_t task = MACH_PORT_NULL;
-    struct task_basic_info t_info;
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+/// get resident size of memory
+size_t zmalloc_get_rss(void)
+{
+  task_t task = MACH_PORT_NULL;
+  struct task_basic_info t_info;
+  mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
-    if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
-        return 0;
-    task_info(task, TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+  if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
+  {
+    return 0;
+  }
+  task_info(task, TASK_BASIC_INFO, (task_info_t) &t_info, &t_info_count);
 
-    return t_info.resident_size;
+  return t_info.resident_size;
 }
 #else
 size_t zmalloc_get_rss(void) {
@@ -321,8 +359,9 @@ size_t zmalloc_get_rss(void) {
 #endif
 
 /* Fragmentation = RSS / allocated-bytes */
-float zmalloc_get_fragmentation_ratio(size_t rss) {
-    return (float)rss/zmalloc_used_memory();
+float zmalloc_get_fragmentation_ratio(size_t rss)
+{
+  return (float) rss / zmalloc_used_memory();
 }
 
 #if defined(HAVE_PROC_SMAPS)
@@ -345,7 +384,8 @@ size_t zmalloc_get_private_dirty(void) {
     return pd;
 }
 #else
-size_t zmalloc_get_private_dirty(void) {
-    return 0;
+size_t zmalloc_get_private_dirty(void)
+{
+  return 0;
 }
 #endif

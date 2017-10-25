@@ -36,6 +36,8 @@
 #include "config.h"
 #include <stdint.h>
 
+/// complete
+
 void memrev16(void *p);
 void memrev32(void *p);
 void memrev64(void *p);

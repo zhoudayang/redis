@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/// logo of redis
+
 char *ascii_logo =
 "                _._                                                  \n"
 "           _.-``__ ''-._                                             \n"
