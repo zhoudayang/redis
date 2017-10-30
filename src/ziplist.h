@@ -30,7 +30,7 @@
 
 #define ZIPLIST_HEAD 0
 #define ZIPLIST_TAIL 1
-
+/// complete
 unsigned char *ziplistNew(void);
 unsigned char *ziplistPush(unsigned char *zl, unsigned char *s, unsigned int slen, int where);
 unsigned char *ziplistIndex(unsigned char *zl, int index);
