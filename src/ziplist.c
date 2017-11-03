@@ -48,7 +48,7 @@
  * <zllen> is the number of entries.When this value is larger than 2**16-2,
  * we need to traverse the entire list to know how many items it holds.
  *
- * <zllen> 保存着列表中的节点数量。
+ * <zllen> 保存着列表中的节点数量, 如果此值比2**16-2还要打，那么我们需要遍历整个链表来直到它保存了什么项目。
  * 
  * 当 zllen 保存的值大于 2**16-2 时，
  * 程序需要遍历整个列表才能知道列表实际包含了多少个节点。
@@ -197,33 +197,36 @@
 /*
  * 字符串编码和整数编码的掩码
  */
-#define ZIP_STR_MASK 0xc0
-#define ZIP_INT_MASK 0x30
+#define ZIP_STR_MASK 0xc0 //  0x11000000
+#define ZIP_INT_MASK 0x30 //  0x00110000
 
 /*
  * 字符串编码类型
  */
-#define ZIP_STR_06B (0 << 6)
-#define ZIP_STR_14B (1 << 6)
-#define ZIP_STR_32B (2 << 6)
+
+#define ZIP_STR_06B (0 << 6) // 0x00000000
+#define ZIP_STR_14B (1 << 6) // 0x01000000
+#define ZIP_STR_32B (2 << 6) // 0x10000000
 
 /*
  * 整数编码类型
  */
-#define ZIP_INT_16B (0xc0 | 0<<4)
-#define ZIP_INT_32B (0xc0 | 1<<4)
-#define ZIP_INT_64B (0xc0 | 2<<4)
-#define ZIP_INT_24B (0xc0 | 3<<4)
-#define ZIP_INT_8B 0xfe
+
+#define ZIP_INT_16B (0xc0 | 0<<4) // 0x11000000
+#define ZIP_INT_32B (0xc0 | 1<<4) // 0x11001000
+#define ZIP_INT_64B (0xc0 | 2<<4) // 0x11010000
+#define ZIP_INT_24B (0xc0 | 3<<4) // 0x11110000
+#define ZIP_INT_8B 0xfe // 0x11111110
 
 /* 4 bit integer immediate encoding 
  *
  * 4 位整数编码的掩码和类型
  */
+
 #define ZIP_INT_IMM_MASK 0x0f
-#define ZIP_INT_IMM_MIN 0xf1    /* 11110001 */
-#define ZIP_INT_IMM_MAX 0xfd    /* 11111101 */
-#define ZIP_INT_IMM_VAL(v) (v & ZIP_INT_IMM_MASK)
+#define ZIP_INT_IMM_MIN 0xf1    /* 11110001 */ // 4位整数的最小值
+#define ZIP_INT_IMM_MAX 0xfd    /* 11111101 */ // 4位整数的最大值
+#define ZIP_INT_IMM_VAL(v) (v & ZIP_INT_IMM_MASK) // 获取4位整数的值
 
 /*
  * 24 位整数的最大值和最小值
@@ -231,7 +234,7 @@
 #define INT24_MAX 0x7fffff
 #define INT24_MIN (-INT24_MAX - 1)
 
-/// 00, 01, 10表示contents中保存着字符串
+/// 00000000, 01000000, 10000000表示contents中保存着字符串
 /* Macro to determine type 
  *
  * 查看给定编码 enc 是否字符串编码
@@ -272,7 +275,7 @@ size          4 bytes   4 bytes 2 bytes  1 byte
             +---------+--------+-------+-----------+
 component   | zlbytes | zltail | zllen | zlend     |
             |         |        |       |           |
-value       |  1011   |  1010  |   0   | 1111 1111 |
+value       | 1011(11)|1010(10)|   0   | 1111 1111 |
             +---------+--------+-------+-----------+
                                        ^
                                        |
@@ -300,7 +303,7 @@ address                                |                          |        |
 /* We know a positive increment can only be 1 because entries can only be
  * pushed one at a time. */
 /*
- * 增加 ziplist 的节点数
+ * 增加 ziplist 的节点数, 仅当length of ziplist < UINT16_MAX
  *
  * T = O(1)
  */
@@ -353,9 +356,10 @@ typedef struct zlentry
  *
  * T = O(1)
  */
+
 static unsigned int zipIntSize(unsigned char encoding)
 {
-
+  // 根据整数的编码格式，返回整数编码占据的长度
   switch (encoding)
   {
     case ZIP_INT_8B: return 1;
@@ -365,7 +369,6 @@ static unsigned int zipIntSize(unsigned char encoding)
     case ZIP_INT_64B: return 8;
     default: return 0; /* 4 bit immediate */
   }
-
   assert(NULL);
   return 0;
 }
@@ -388,52 +391,60 @@ static unsigned int zipEncodeLength(unsigned char *p, unsigned char encoding, un
   {
     /* Although encoding is given it may not be set for strings,
      * so we determine it here using the raw length. */
-    if (rawlen <= 0x3f)
+    if (rawlen <= 0x3f) // 0x00111111 能够使用6bit存储
     {
       if (!p)
       {
         return len;
       }
+      /// 存储长度值
       buf[0] = ZIP_STR_06B | rawlen;
     }
-    else if (rawlen <= 0x3fff)
+    else if (rawlen <= 0x3fff) // 0x0011 1111 1111 1111 能够使用14bit存储
     {
+      /// 使用2byte能够存储
       len += 1;
       if (!p)
       {
         return len;
       }
+      /// 存储高8bit
       buf[0] = ZIP_STR_14B | ((rawlen >> 8) & 0x3f);
+      /// 存储低8bit
       buf[1] = rawlen & 0xff;
     }
     else
     {
+      /// 使用5byte来存储长度
       len += 4;
       if (!p)
       {
         return len;
       }
       buf[0] = ZIP_STR_32B;
+      /// 依次存储长度值的每个byte划分
       buf[1] = (rawlen >> 24) & 0xff;
       buf[2] = (rawlen >> 16) & 0xff;
       buf[3] = (rawlen >> 8) & 0xff;
       buf[4] = rawlen & 0xff;
     }
-
     // 编码整数
   }
   else
   {
+    /// 表明编码为整数，所以长度为1
     /* Implies integer encoding, so length is always 1. */
     if (!p)
     {
       return len;
     }
+    /// 记录编码格式
     buf[0] = encoding;
   }
 
   /* Store this length at p */
   // 将编码后的长度写入 p
+  /// memcpy(void* restrict dst, const void* restrict src, size_t n)
   memcpy(p, buf, len);
 
   // 返回编码所需的字节数
@@ -457,10 +468,10 @@ static unsigned int zipEncodeLength(unsigned char *p, unsigned char encoding, un
  */
 #define ZIP_DECODE_LENGTH(ptr, encoding, lensize, len) do {                    \
                                                                                \
-    /* 取出值的编码类型 */                                                     \
+    /* 取出值的编码类型 */                                                        \
     ZIP_ENTRY_ENCODING((ptr), (encoding));                                     \
                                                                                \
-    /* 字符串编码 */                                                           \
+    /* 字符串编码 */                                                             \
     if ((encoding) < ZIP_STR_MASK) {                                           \
         if ((encoding) == ZIP_STR_06B) {                                       \
             (lensize) = 1;                                                     \
@@ -478,7 +489,7 @@ static unsigned int zipEncodeLength(unsigned char *p, unsigned char encoding, un
             assert(NULL);                                                      \
         }                                                                      \
                                                                                \
-    /* 整数编码 */                                                             \
+    /* 整数编码 */                                                               \
     } else {                                                                   \
         (lensize) = 1;                                                         \
         (len) = zipIntSize(encoding);                                          \
@@ -501,19 +512,17 @@ static unsigned int zipPrevEncodeLength(unsigned char *p, unsigned int len)
   // 仅返回编码 len 所需的字节数量
   if (p == NULL)
   {
+    // len 254以内，1byte，大于254byte，5byte
     return (len < ZIP_BIGLEN) ? 1 : sizeof(len) + 1;
-
     // 写入并返回编码 len 所需的字节数量
   }
   else
   {
-
     // 1 字节
     if (len < ZIP_BIGLEN)
     {
       p[0] = len;
       return 1;
-
       // 5 字节
     }
     else
@@ -578,15 +587,14 @@ static void zipPrevEncodeLengthForceLarge(unsigned char *p, unsigned int len)
  *
  * 然后根据 prevlensize ，从 ptr 中取出前置节点的长度值，
  * 并将这个长度值保存到 prevlen 变量中。
- *
+ * 取出前置结点的长度值
  * T = O(1)
  */
 #define ZIP_DECODE_PREVLEN(ptr, prevlensize, prevlen) do {                     \
-                                                                               \
-    /* 先计算被编码长度值的字节数 */                                           \
+    /* 先计算被编码长度值的字节数 */                                                \
     ZIP_DECODE_PREVLENSIZE(ptr, prevlensize);                                  \
                                                                                \
-    /* 再根据编码字节数来取出长度值 */                                         \
+    /* 再根据编码字节数来取出长度值 */                                               \
     if ((prevlensize) == 1) {                                                  \
         (prevlen) = (ptr)[0];                                                  \
     } else if ((prevlensize) == 5) {                                           \
@@ -600,7 +608,7 @@ static void zipPrevEncodeLengthForceLarge(unsigned char *p, unsigned int len)
  * previous element 'len', in the entry pointed to by 'p'. 
  *
  * 计算编码新的前置节点长度 len 所需的字节数，
- * 减去编码 p 原来的前置节点长度所需的字节数之差。
+ * 减去编码 p 原来的前置节点长度得到所需的字节数之差。
  *
  * T = O(1)
  */
@@ -672,6 +680,7 @@ static int zipTryEncoding(unsigned char *entry, unsigned int entrylen, long long
     /// 确定合适的编码方式
     if (value >= 0 && value <= 12)
     {
+      /// 将编码格式和值一起存储
       *encoding = ZIP_INT_IMM_MIN + value;
     }
     else if (value >= INT8_MIN && value <= INT8_MAX)
@@ -746,6 +755,7 @@ static void zipSaveInteger(unsigned char *p, int64_t value, unsigned char encodi
     memcpy(p, &i64, sizeof(i64));
     memrev64ifbe(p);
   }
+  /// 在encoding之中已经存储了值
   else if (encoding >= ZIP_INT_IMM_MIN && encoding <= ZIP_INT_IMM_MAX)
   {
     /* Nothing to do, the value is stored in the encoding itself. */
@@ -759,6 +769,7 @@ static void zipSaveInteger(unsigned char *p, int64_t value, unsigned char encodi
 /* Read integer encoded as 'encoding' from 'p'
  * 
  * 以 encoding 指定的编码方式，读取并返回指针 p 中的整数值。
+ * 获取编码格式对应的整数值
  *
  * T = O(1)
  */
@@ -879,6 +890,7 @@ static unsigned char *ziplistResize(unsigned char *zl, unsigned int len)
 {
 
   // 用 zrealloc ，扩展时不改变现有元素
+  /// realloc, 扩展出的新内存空间不用复制原有内存块中的内容
   zl = zrealloc(zl, len);
 
   // 更新 bytes 属性
@@ -1085,6 +1097,7 @@ static unsigned char *__ziplistCascadeUpdate(unsigned char *zl, unsigned char *p
  */
 static unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsigned int num)
 {
+  /// deleted记录要删除的节点数量
   unsigned int i, totlen, deleted = 0;
   size_t offset;
   int nextdiff = 0;
@@ -1093,6 +1106,7 @@ static unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsig
   // 计算被删除节点总共占用的内存字节数
   // 以及被删除节点的总个数
   // T = O(N)
+  /// 记录删除的第一个结点
   first = zipEntry(p);
   for (i = 0; p[0] != ZIP_END && i < num; i++)
   {
@@ -1116,6 +1130,7 @@ static unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsig
       // 因为位于被删除范围之后的第一个节点的 header 部分的大小
       // 可能容纳不了新的前置节点，所以需要计算新旧前置节点之间的字节数差
       // T = O(1)
+      /// first能够存储prevrawlen，但是p之后的节点不能够存储
       nextdiff = zipPrevLenByteDiff(p, first.prevrawlen);
       // 如果有需要的话，将指针 p 后退 nextdiff 字节，为新 header 空出空间
       p -= nextdiff;
